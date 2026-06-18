@@ -403,55 +403,58 @@
     .upcoming-card .when{ text-align:left; }
   }
 
-  /* LOCK SCREEN */
-  #lockScreen{
-    position:fixed;
-    inset:0;
-    background:var(--paper);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    z-index:100;
-    padding:20px;
+  /* MODAL DE AUTENTICACIÓN */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 34, 39, 0.4);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 150;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
   }
-  .lock-box{
-    background:var(--paper-2);
-    border:1px solid var(--line);
-    border-radius:var(--radius);
-    padding:32px 28px;
-    max-width:360px;
-    width:100%;
-    text-align:center;
+  .modal-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
   }
-  .lock-box .lock-icon{
-    font-size:1.8rem;
-    margin-bottom:10px;
+  .modal-box {
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 32px 28px;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
   }
-  .lock-box h2{
-    font-family:"Iowan Old Style","Georgia",serif;
-    font-size:1.2rem;
-    margin:0 0 6px;
+  .modal-box h3 {
+    font-family: "Iowan Old Style","Georgia",serif;
+    font-size: 1.25rem;
+    margin: 0 0 8px;
   }
-  .lock-box p{
-    font-size:0.85rem;
-    color:var(--muted);
-    margin:0 0 18px;
+  .modal-box p {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0 0 16px;
   }
-  .lock-box input{
-    width:100%;
-    padding:11px 14px;
-    font-size:0.95rem;
-    border:1px solid var(--line);
-    border-radius:8px;
-    background:var(--paper);
-    color:var(--ink);
-    font-family:inherit;
-    text-align:center;
-    margin-bottom:12px;
+  .modal-box input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: inherit;
+    margin-bottom: 12px;
   }
-  .lock-box input:focus{
-    outline:2px solid var(--ink);
-    outline-offset:1px;
+  .modal-box input:focus {
+    outline: 2px solid var(--ink);
+    outline-offset: 1px;
   }
   .lock-error{
     color:var(--ocupada);
@@ -459,7 +462,40 @@
     margin-bottom:10px;
     display:none;
   }
-  #appContent{ display:none; }
+  #appContent{ display:block; }
+
+  /* HEADER RIGHT & USER BADGE */
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    text-align: right;
+  }
+  .user-badge {
+    font-size: 0.78rem;
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .btn-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--proxima);
+    cursor: pointer;
+    font-size: 0.78rem;
+    text-decoration: underline;
+    font-weight: 600;
+  }
+  .btn-link:hover {
+    color: var(--ink);
+  }
 
   /* FILTROS DE HISTORIAL */
   .history-filters {
@@ -543,26 +579,41 @@
 </head>
 <body>
 
-<div id="lockScreen">
-  <div class="lock-box">
-    <div class="lock-icon">🔒</div>
-    <h2>Acceso restringido</h2>
-    <p>Ingresa la contraseña para ver y usar la bitácora de la sala de capacitación.</p>
-    <input id="lockPassword" type="password" placeholder="Contraseña" autocomplete="off">
-    <div class="lock-error" id="lockError">Contraseña incorrecta.</div>
-    <button class="btn-primary" id="btnUnlock" style="width:100%;">Entrar</button>
+<div id="authModal" class="modal-overlay">
+  <div class="modal-box">
+    <h3>Identificación requerida</h3>
+    <p id="authModalPrompt">Ingresa tus credenciales para realizar cambios en la bitácora.</p>
+    <div class="field">
+      <label for="authUsername">Usuario</label>
+      <input type="text" id="authUsername" placeholder="Ej. admin o usuario" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="authPassword">Contraseña</label>
+      <input type="password" id="authPassword" placeholder="Contraseña" autocomplete="off">
+    </div>
+    <div class="lock-error" id="authError" style="margin-bottom: 14px;">Usuario o contraseña incorrectos.</div>
+    <div class="form-actions" style="margin-top: 10px;">
+      <button class="btn-primary" id="btnAuthSubmit" style="flex-grow: 1;">Entrar</button>
+      <button class="btn-secondary" id="btnAuthCancel">Cancelar</button>
+    </div>
   </div>
 </div>
 
 <div id="appContent">
 <div class="wrap">
 
-  <header>
+  <header style="align-items: center;">
     <div>
       <span class="eyebrow">Bitácora compartida <span id="dbStatusBadge" class="db-status-badge local">Modo Local</span></span>
       <h1>Sala de Capacitación</h1>
     </div>
-    <div class="clock" id="clock">—</div>
+    <div class="header-right">
+      <div class="clock" id="clock">—</div>
+      <div id="userBadge" class="user-badge" style="display:none;">
+        👤 <span id="userBadgeName" style="font-weight:600;"></span> (<span id="userBadgeRole"></span>)
+        <button id="btnLogout" class="btn-link" style="margin-left: 6px;">Salir</button>
+      </div>
+    </div>
   </header>
 
   <div id="localWarningBanner" class="local-warning-banner" style="display:none;">
@@ -705,38 +756,114 @@ async function sha256(text){
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
-const lockScreen = document.getElementById('lockScreen');
-const appContent = document.getElementById('appContent');
-const lockPassword = document.getElementById('lockPassword');
-const lockError = document.getElementById('lockError');
-const btnUnlock = document.getElementById('btnUnlock');
+// Cuentas de usuario configuradas para la empresa:
+const USERS = {
+  admin: {
+    role: "admin",
+    // Contraseña por defecto: "admin123" -> SHA256: 240a1051855d6482d8c3bc047b0a793a38be9a9f24c3e809f6b4f74cb0670868
+    passwordHash: "240a1051855d6482d8c3bc047b0a793a38be9a9f24c3e809f6b4f74cb0670868"
+  },
+  usuario: {
+    role: "user",
+    // Contraseña por defecto: "user123" -> SHA256: 0b14d501a594442a01c6859541bcb3e8164d183d32937b8511454ecd47a6b03c
+    passwordHash: "0b14d501a594442a01c6859541bcb3e8164d183d32937b8511454ecd47a6b03c"
+  }
+};
 
-async function tryUnlock(){
-  const value = lockPassword.value;
-  if(!value){ return; }
-  btnUnlock.disabled = true;
-  try{
-    const hash = await sha256(value);
-    if(hash === PASSWORD_HASH){
-      lockScreen.style.display = 'none';
-      appContent.style.display = 'block';
-      lockError.style.display = 'none';
-      init();
-    } else {
-      lockError.style.display = 'block';
-      lockPassword.value = '';
-      lockPassword.focus();
-    }
-  } finally {
-    btnUnlock.disabled = false;
+let currentUser = null;
+let pendingAuthCallback = null;
+
+// Intentar recuperar sesión existente
+try {
+  const storedUser = sessionStorage.getItem('bitacora:user');
+  if (storedUser) {
+    currentUser = JSON.parse(storedUser);
+  }
+} catch(e) {}
+
+const authModal = document.getElementById('authModal');
+const authUsername = document.getElementById('authUsername');
+const authPassword = document.getElementById('authPassword');
+const authError = document.getElementById('authError');
+const btnAuthSubmit = document.getElementById('btnAuthSubmit');
+const btnAuthCancel = document.getElementById('btnAuthCancel');
+const userBadge = document.getElementById('userBadge');
+const userBadgeName = document.getElementById('userBadgeName');
+const userBadgeRole = document.getElementById('userBadgeRole');
+const btnLogout = document.getElementById('btnLogout');
+const authModalPrompt = document.getElementById('authModalPrompt');
+
+function updateUserUI() {
+  if (currentUser) {
+    userBadgeName.textContent = currentUser.username;
+    userBadgeRole.textContent = currentUser.role === 'admin' ? 'Admin' : 'Colaborador';
+    userBadge.style.display = 'flex';
+  } else {
+    userBadge.style.display = 'none';
   }
 }
 
-btnUnlock.addEventListener('click', tryUnlock);
-lockPassword.addEventListener('keydown', (e) => {
-  if(e.key === 'Enter') tryUnlock();
+function openAuthModal(promptText, onSuccess) {
+  pendingAuthCallback = onSuccess;
+  authModalPrompt.textContent = promptText || "Ingresa tus credenciales para continuar.";
+  authModal.classList.add('show');
+  authUsername.value = '';
+  authPassword.value = '';
+  authError.style.display = 'none';
+  authUsername.focus();
+}
+
+function closeAuthModal() {
+  authModal.classList.remove('show');
+  pendingAuthCallback = null;
+}
+
+async function handleAuthSubmit() {
+  const username = authUsername.value.trim().toLowerCase();
+  const password = authPassword.value;
+  
+  if (!username || !password) {
+    authError.textContent = 'Ingresa usuario y contraseña.';
+    authError.style.display = 'block';
+    return;
+  }
+  
+  btnAuthSubmit.disabled = true;
+  try {
+    const user = USERS[username];
+    if (user) {
+      const hash = await sha256(password);
+      if (hash === user.passwordHash) {
+        currentUser = { username, role: user.role };
+        sessionStorage.setItem('bitacora:user', JSON.stringify(currentUser));
+        updateUserUI();
+        closeAuthModal();
+        if (pendingAuthCallback) pendingAuthCallback();
+        return;
+      }
+    }
+    authError.textContent = 'Usuario o contraseña incorrectos.';
+    authError.style.display = 'block';
+  } finally {
+    btnAuthSubmit.disabled = false;
+  }
+}
+
+btnAuthSubmit.addEventListener('click', handleAuthSubmit);
+btnAuthCancel.addEventListener('click', closeAuthModal);
+authPassword.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') handleAuthSubmit();
 });
-lockPassword.focus();
+authUsername.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') authPassword.focus();
+});
+
+btnLogout.addEventListener('click', () => {
+  currentUser = null;
+  sessionStorage.removeItem('bitacora:user');
+  updateUserUI();
+  showToast('Sesión cerrada');
+});
 
 const statusCard = document.getElementById('statusCard');
 const statusLabel = document.getElementById('statusLabel');
@@ -1083,6 +1210,10 @@ function buildQuickDates(){
 }
 
 function openForm(){
+  if (!currentUser) {
+    openAuthModal("Inicia sesión para agendar la sala.", () => openForm());
+    return;
+  }
   formCard.style.display = 'block';
   formTitle.textContent = 'Agendar la sala';
   buildQuickDates();
@@ -1110,6 +1241,10 @@ inpFecha.addEventListener('change', () => {
 });
 
 async function liberarAhora(id){
+  if (!currentUser) {
+    openAuthModal("Inicia sesión para liberar la sala.", () => liberarAhora(id));
+    return;
+  }
   if (useFirebase && db) {
     try {
       await db.collection("reservas").doc(id).update({
@@ -1137,6 +1272,14 @@ async function liberarAhora(id){
 }
 
 async function cancelarReserva(id){
+  if (!currentUser) {
+    openAuthModal("Inicia sesión para cancelar la reserva.", () => cancelarReserva(id));
+    return;
+  }
+  if (currentUser.role !== 'admin') {
+    showToast('Solo el administrador puede cancelar reservas.');
+    return;
+  }
   if (useFirebase && db) {
     try {
       await db.collection("reservas").doc(id).update({
@@ -1336,6 +1479,7 @@ async function init(){
   initialized = true;
   updateClock();
   setInterval(updateClock, 30000);
+  updateUserUI();
 
   // Initialize filter event listeners
   const searchInput = document.getElementById('historySearch');
@@ -1373,6 +1517,7 @@ async function init(){
     pollTimer = setInterval(refreshAll, 10000);
   }
 }
+init();
 </script>
 </body>
 </html>
