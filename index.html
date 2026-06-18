@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <title>Bitácora — Sala de Capacitación</title>
+<!-- Firebase App (compat) y Firestore (compat) para sincronización en la nube -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --ink:#1c2227;
@@ -504,6 +507,38 @@
     color: var(--muted);
     margin-top: 4px;
   }
+  
+  /* ESTADO DE CONEXIÓN Y BANNER DE AVISO */
+  .db-status-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-left: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
+  .db-status-badge.local {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+  }
+  .db-status-badge.cloud {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+  }
+  .local-warning-banner {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    margin-bottom: 22px;
+    font-size: 0.88rem;
+    line-height: 1.4;
+  }
 </style>
 </head>
 <body>
@@ -524,11 +559,15 @@
 
   <header>
     <div>
-      <span class="eyebrow">Bitácora compartida</span>
+      <span class="eyebrow">Bitácora compartida <span id="dbStatusBadge" class="db-status-badge local">Modo Local</span></span>
       <h1>Sala de Capacitación</h1>
     </div>
     <div class="clock" id="clock">—</div>
   </header>
+
+  <div id="localWarningBanner" class="local-warning-banner" style="display:none;">
+    ⚠️ <b>Modo Local:</b> Las reservas solo se guardan en esta computadora. Para sincronizar y ver las reservas de toda la empresa en tiempo real, edita el archivo <code>index.html</code> e ingresa la configuración de Firebase en el código.
+  </div>
 
   <div id="statusCard" class="status-card libre">
     <div class="status-top">
@@ -615,6 +654,31 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// CONFIGURACIÓN DE FIREBASE (PARA COMPARTIR CON TODA LA EMPRESA)
+// Si dejas este objeto vacío, la bitácora funcionará en "Modo Local" en tu navegador.
+const firebaseConfig = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+
+let db = null;
+let useFirebase = false;
+
+if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    useFirebase = true;
+    console.log("Firebase Firestore inicializado correctamente.");
+  } catch (e) {
+    console.error("Error al inicializar Firebase:", e);
+  }
+}
+
 const SHARED = true;
 const BOOKINGS_KEY = "sala-capacitacion:reservas";
 
@@ -785,6 +849,35 @@ function genId(){
   return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 }
 
+let unsubFirestore = null;
+
+async function initFirestore() {
+  if (!useFirebase || !db) return;
+  
+  const statusBadge = document.getElementById('dbStatusBadge');
+  const warningBanner = document.getElementById('localWarningBanner');
+  if (statusBadge) {
+    statusBadge.textContent = "Nube Sincronizada";
+    statusBadge.className = "db-status-badge cloud";
+  }
+  if (warningBanner) {
+    warningBanner.style.display = "none";
+  }
+
+  // Escuchar cambios en tiempo real
+  unsubFirestore = db.collection("reservas").onSnapshot((querySnapshot) => {
+    const list = [];
+    querySnapshot.forEach((doc) => {
+      list.push({ id: doc.id, ...doc.data() });
+    });
+    bookings = list;
+    archivarVencidasLocales();
+    renderAll();
+  }, (error) => {
+    console.error("Error al suscribirse a Firestore:", error);
+  });
+}
+
 async function getLatestBookingsFromStorage() {
   try {
     const res = await window.storage.get(BOOKINGS_KEY, SHARED);
@@ -795,25 +888,37 @@ async function getLatestBookingsFromStorage() {
 }
 
 async function loadBookings(){
+  if (useFirebase && db) {
+    // Firestore se maneja mediante onSnapshot en tiempo real
+    return;
+  }
   bookings = await getLatestBookingsFromStorage();
 }
 
 async function saveBookings(){
+  if (useFirebase && db) return;
   await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
 }
 
 async function addOrUpdateBooking(bookingToSave) {
-  const latest = await getLatestBookingsFromStorage();
-  const idx = latest.findIndex(b => b.id === bookingToSave.id);
-  if (idx !== -1) {
-    latest[idx] = { ...latest[idx], ...bookingToSave, updated_at: Date.now() };
+  if (useFirebase && db) {
+    const { id, ...data } = bookingToSave;
+    data.created_at = data.created_at || Date.now();
+    data.updated_at = Date.now();
+    await db.collection("reservas").doc(id).set(data);
   } else {
-    bookingToSave.created_at = Date.now();
-    bookingToSave.updated_at = Date.now();
-    latest.push(bookingToSave);
+    const latest = await getLatestBookingsFromStorage();
+    const idx = latest.findIndex(b => b.id === bookingToSave.id);
+    if (idx !== -1) {
+      latest[idx] = { ...latest[idx], ...bookingToSave, updated_at: Date.now() };
+    } else {
+      bookingToSave.created_at = Date.now();
+      bookingToSave.updated_at = Date.now();
+      latest.push(bookingToSave);
+    }
+    bookings = latest;
+    await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
   }
-  bookings = latest;
-  await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
 }
 
 // Una reserva "activa ahora": fecha = hoy, desde <= ahora < hasta, estado programada
@@ -851,24 +956,36 @@ function getProximas(){
   }).sort((a,b)=> (a.fecha+a.desde).localeCompare(b.fecha+b.desde));
 }
 
-async function archivarVencidas(){
-  const latest = await getLatestBookingsFromStorage();
+async function archivarVencidasLocales(){
   const today = todayStr();
   const now = nowHHMM();
   let changed = false;
-  latest.forEach(b => {
-    if(b.estado === 'programada'){
+  
+  for (let i = 0; i < bookings.length; i++) {
+    const b = bookings[i];
+    if (b.estado === 'programada') {
       const vencida = b.fecha < today || (b.fecha === today && b.hasta <= now);
-      if(vencida){
+      if (vencida) {
         b.estado = 'finalizada';
         b.updated_at = Date.now();
         changed = true;
+        
+        if (useFirebase && db) {
+          try {
+            await db.collection("reservas").doc(b.id).update({
+              estado: 'finalizada',
+              updated_at: Date.now()
+            });
+          } catch(e) {
+            console.error("Error al archivar en Firestore:", e);
+          }
+        }
       }
     }
-  });
-  bookings = latest;
-  if(changed) {
-    await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
+  }
+  
+  if (!useFirebase && changed) {
+    await saveBookings();
   }
 }
 
@@ -992,28 +1109,55 @@ inpFecha.addEventListener('change', () => {
 });
 
 async function liberarAhora(id){
-  const latestBookings = await getLatestBookingsFromStorage();
-  const b = latestBookings.find(x => x.id === id);
-  if(!b) return;
-  b.hasta = nowHHMM();
-  b.estado = 'finalizada';
-  b.updated_at = Date.now();
-  bookings = latestBookings;
-  await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
-  renderAll();
-  showToast('Sala liberada');
+  if (useFirebase && db) {
+    try {
+      await db.collection("reservas").doc(id).update({
+        hasta: nowHHMM(),
+        estado: 'finalizada',
+        updated_at: Date.now()
+      });
+      showToast('Sala liberada');
+    } catch(e) {
+      console.error(e);
+      showToast('Error al liberar sala');
+    }
+  } else {
+    const latestBookings = await getLatestBookingsFromStorage();
+    const b = latestBookings.find(x => x.id === id);
+    if(!b) return;
+    b.hasta = nowHHMM();
+    b.estado = 'finalizada';
+    b.updated_at = Date.now();
+    bookings = latestBookings;
+    await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
+    renderAll();
+    showToast('Sala liberada');
+  }
 }
 
 async function cancelarReserva(id){
-  const latestBookings = await getLatestBookingsFromStorage();
-  const b = latestBookings.find(x => x.id === id);
-  if(!b) return;
-  b.estado = 'cancelada';
-  b.updated_at = Date.now();
-  bookings = latestBookings;
-  await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
-  renderAll();
-  showToast('Reserva cancelada');
+  if (useFirebase && db) {
+    try {
+      await db.collection("reservas").doc(id).update({
+        estado: 'cancelada',
+        updated_at: Date.now()
+      });
+      showToast('Reserva cancelada');
+    } catch(e) {
+      console.error(e);
+      showToast('Error al cancelar reserva');
+    }
+  } else {
+    const latestBookings = await getLatestBookingsFromStorage();
+    const b = latestBookings.find(x => x.id === id);
+    if(!b) return;
+    b.estado = 'cancelada';
+    b.updated_at = Date.now();
+    bookings = latestBookings;
+    await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
+    renderAll();
+    showToast('Reserva cancelada');
+  }
 }
 
 btnGuardar.addEventListener('click', async () => {
@@ -1179,9 +1323,11 @@ function renderAll(){
 }
 
 async function refreshAll(){
-  await archivarVencidas();
-  await loadBookings();
-  renderAll();
+  await archivarVencidasLocales();
+  if (!useFirebase) {
+    await loadBookings();
+    renderAll();
+  }
 }
 
 async function init(){
@@ -1215,10 +1361,16 @@ async function init(){
     });
   }
 
-  await loadBookings();
-  await archivarVencidas();
-  renderAll();
-  pollTimer = setInterval(refreshAll, 10000);
+  const warningBanner = document.getElementById('localWarningBanner');
+  if (useFirebase) {
+    await initFirestore();
+  } else {
+    if (warningBanner) warningBanner.style.display = "block";
+    await loadBookings();
+    await archivarVencidasLocales();
+    renderAll();
+    pollTimer = setInterval(refreshAll, 10000);
+  }
 }
 </script>
 </body>
