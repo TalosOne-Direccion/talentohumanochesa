@@ -457,6 +457,53 @@
     display:none;
   }
   #appContent{ display:none; }
+
+  /* FILTROS DE HISTORIAL */
+  .history-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .history-filters input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 0.88rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: inherit;
+  }
+  .history-filters input:focus, .history-filters select:focus {
+    outline: 2px solid var(--ink);
+    outline-offset: 1px;
+  }
+  .filters-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .history-filters select {
+    padding: 10px 12px;
+    font-size: 0.88rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: inherit;
+    flex-grow: 1;
+  }
+  .entry-meta {
+    font-size: 0.76rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
 </style>
 </head>
 <body>
@@ -543,7 +590,21 @@
 
   <div class="history-section">
     <h2>Historial</h2>
-    <div class="history-sub">Registro de uso de la sala — últimos 14 días</div>
+    <div class="history-sub">Registro de uso de la sala</div>
+    
+    <!-- Filtros de Historial -->
+    <div class="history-filters">
+      <input type="text" id="historySearch" placeholder="Buscar por nombre, área o motivo..." autocomplete="off">
+      <div class="filters-row">
+        <select id="historyStatusFilter">
+          <option value="todos">Todos los estados</option>
+          <option value="finalizada">Finalizadas</option>
+          <option value="cancelada">Canceladas</option>
+        </select>
+        <button class="quick-date-btn active" id="btnToggleTimeframe" type="button">Últimos 14 días</button>
+      </div>
+    </div>
+
     <div id="historyList"></div>
   </div>
 
@@ -637,6 +698,7 @@ const toastEl = document.getElementById('toast');
 let bookings = [];
 let pollTimer = null;
 let initialized = false;
+let showAllHistory = false;
 
 function showToast(msg){
   toastEl.textContent = msg;
@@ -660,6 +722,17 @@ function fmtTime(hhmm){
   const ampm = hh >= 12 ? 'p.m.' : 'a.m.';
   let hh12 = hh % 12; if(hh12===0) hh12 = 12;
   return `${hh12}:${m} ${ampm}`;
+}
+
+function fmtDateTime(timestamp){
+  if(!timestamp) return '—';
+  const date = new Date(timestamp);
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const day = date.getDate();
+  const month = meses[date.getMonth()];
+  const hh = pad(date.getHours());
+  const mm = pad(date.getMinutes());
+  return `${day} ${month} · ${hh}:${mm}`;
 }
 
 function dateObj(d){ return new Date(d + 'T00:00:00'); }
@@ -712,16 +785,34 @@ function genId(){
   return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 }
 
-async function loadBookings(){
-  try{
+async function getLatestBookingsFromStorage() {
+  try {
     const res = await window.storage.get(BOOKINGS_KEY, SHARED);
-    bookings = res ? JSON.parse(res.value) : [];
-  }catch(e){
-    bookings = [];
+    return res ? JSON.parse(res.value) : [];
+  } catch (e) {
+    return [];
   }
 }
 
+async function loadBookings(){
+  bookings = await getLatestBookingsFromStorage();
+}
+
 async function saveBookings(){
+  await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
+}
+
+async function addOrUpdateBooking(bookingToSave) {
+  const latest = await getLatestBookingsFromStorage();
+  const idx = latest.findIndex(b => b.id === bookingToSave.id);
+  if (idx !== -1) {
+    latest[idx] = { ...latest[idx], ...bookingToSave, updated_at: Date.now() };
+  } else {
+    bookingToSave.created_at = Date.now();
+    bookingToSave.updated_at = Date.now();
+    latest.push(bookingToSave);
+  }
+  bookings = latest;
   await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
 }
 
@@ -761,19 +852,24 @@ function getProximas(){
 }
 
 async function archivarVencidas(){
+  const latest = await getLatestBookingsFromStorage();
   const today = todayStr();
   const now = nowHHMM();
   let changed = false;
-  bookings.forEach(b => {
+  latest.forEach(b => {
     if(b.estado === 'programada'){
       const vencida = b.fecha < today || (b.fecha === today && b.hasta <= now);
       if(vencida){
         b.estado = 'finalizada';
+        b.updated_at = Date.now();
         changed = true;
       }
     }
   });
-  if(changed) await saveBookings();
+  bookings = latest;
+  if(changed) {
+    await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
+  }
 }
 
 function renderStatus(){
@@ -896,20 +992,26 @@ inpFecha.addEventListener('change', () => {
 });
 
 async function liberarAhora(id){
-  const b = bookings.find(x => x.id === id);
+  const latestBookings = await getLatestBookingsFromStorage();
+  const b = latestBookings.find(x => x.id === id);
   if(!b) return;
   b.hasta = nowHHMM();
   b.estado = 'finalizada';
-  await saveBookings();
+  b.updated_at = Date.now();
+  bookings = latestBookings;
+  await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
   renderAll();
   showToast('Sala liberada');
 }
 
 async function cancelarReserva(id){
-  const b = bookings.find(x => x.id === id);
+  const latestBookings = await getLatestBookingsFromStorage();
+  const b = latestBookings.find(x => x.id === id);
   if(!b) return;
   b.estado = 'cancelada';
-  await saveBookings();
+  b.updated_at = Date.now();
+  bookings = latestBookings;
+  await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
   renderAll();
   showToast('Reserva cancelada');
 }
@@ -953,13 +1055,11 @@ btnGuardar.addEventListener('click', async () => {
 
   try{
     btnGuardar.disabled = true;
-    bookings.push(newBooking);
-    await saveBookings();
+    await addOrUpdateBooking(newBooking);
     closeForm();
     renderAll();
     showToast('Reserva guardada');
   }catch(e){
-    bookings.pop();
     formError.textContent = 'No se pudo guardar. Intenta de nuevo.';
     formError.style.display = 'block';
   }finally{
@@ -1007,12 +1107,33 @@ function renderUpcoming(){
 function renderHistory(){
   const today = todayStr();
   const cutoff = addDays(today, -14);
-  const pasadas = bookings.filter(b =>
-    (b.estado === 'finalizada' || b.estado === 'cancelada') && b.fecha >= cutoff
-  );
+  
+  // Filter by state first (only pasadas: finalizada or cancelada)
+  let pasadas = bookings.filter(b => b.estado === 'finalizada' || b.estado === 'cancelada');
+  
+  // Filter by timeframe
+  if (!showAllHistory) {
+    pasadas = pasadas.filter(b => b.fecha >= cutoff);
+  }
+  
+  // Filter by search query
+  const query = (document.getElementById('historySearch')?.value || '').toLowerCase().trim();
+  if (query) {
+    pasadas = pasadas.filter(b => 
+      (b.nombre || '').toLowerCase().includes(query) ||
+      (b.area || '').toLowerCase().includes(query) ||
+      (b.motivo || '').toLowerCase().includes(query)
+    );
+  }
+  
+  // Filter by status dropdown
+  const statusFilter = document.getElementById('historyStatusFilter')?.value || 'todos';
+  if (statusFilter !== 'todos') {
+    pasadas = pasadas.filter(b => b.estado === statusFilter);
+  }
 
   if(!pasadas.length){
-    historyList.innerHTML = '<div class="empty-state">Aún no hay registros en la bitácora.</div>';
+    historyList.innerHTML = '<div class="empty-state">No se encontraron registros en el historial.</div>';
     return;
   }
 
@@ -1030,12 +1151,18 @@ function renderHistory(){
       const badge = h.estado === 'cancelada'
         ? '<span class="badge cancelada">cancelada</span>'
         : '<span class="badge finalizada">finalizada</span>';
+      
+      const metaLine = h.created_at 
+        ? `<div class="entry-meta">Registrado: ${fmtDateTime(h.created_at)}</div>`
+        : '';
+        
       html += `
         <div class="entry">
           <div>
             <div class="who">${escapeHtml(h.nombre)}</div>
             <div class="area">${escapeHtml(h.area)}</div>
             ${h.motivo ? `<div class="motivo">${escapeHtml(h.motivo)}</div>` : ''}
+            ${metaLine}
           </div>
           <div class="time">${fmtTime(h.desde)} – ${fmtTime(h.hasta)}${badge}</div>
         </div>`;
@@ -1062,6 +1189,32 @@ async function init(){
   initialized = true;
   updateClock();
   setInterval(updateClock, 30000);
+
+  // Initialize filter event listeners
+  const searchInput = document.getElementById('historySearch');
+  const statusFilter = document.getElementById('historyStatusFilter');
+  const btnToggleTimeframe = document.getElementById('btnToggleTimeframe');
+  
+  if (searchInput) {
+    searchInput.addEventListener('input', renderHistory);
+  }
+  if (statusFilter) {
+    statusFilter.addEventListener('change', renderHistory);
+  }
+  if (btnToggleTimeframe) {
+    btnToggleTimeframe.addEventListener('click', () => {
+      showAllHistory = !showAllHistory;
+      if (showAllHistory) {
+        btnToggleTimeframe.textContent = 'Todo el historial';
+        btnToggleTimeframe.classList.remove('active');
+      } else {
+        btnToggleTimeframe.textContent = 'Últimos 14 días';
+        btnToggleTimeframe.classList.add('active');
+      }
+      renderHistory();
+    });
+  }
+
   await loadBookings();
   await archivarVencidas();
   renderAll();
