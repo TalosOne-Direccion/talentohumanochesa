@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Bitácora — Sala de Capacitación</title>
+<style>
+  :root{
+    --ink:#1c2227;
+    --paper:#f6f5f1;
+    --paper-2:#ffffff;
+    --line:#dcd9d0;
+    --muted:#7a766c;
+    --libre:#2f7a4f;
+    --libre-bg:#e7f3ec;
+    --ocupada:#b3402c;
+    --ocupada-bg:#fbe9e4;
+    --proxima:#3a5a8c;
+    --proxima-bg:#e9eef7;
+    --radius:14px;
+    font-family: "Iowan Old Style","Georgia",serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family: "Source Sans 3","Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:760px;
+    margin:0 auto;
+    padding:28px 20px 60px;
+  }
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:14px;
+    margin-bottom:22px;
+  }
+  header h1{
+    font-family:"Iowan Old Style","Georgia",serif;
+    font-size:1.5rem;
+    margin:0;
+    letter-spacing:0.2px;
+  }
+  header .eyebrow{
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    color:var(--muted);
+    display:block;
+    margin-bottom:2px;
+  }
+  header .clock{
+    font-size:0.85rem;
+    color:var(--muted);
+    font-variant-numeric: tabular-nums;
+    text-align:right;
+  }
+
+  /* STATUS CARD */
+  .status-card{
+    border-radius:var(--radius);
+    padding:22px 24px;
+    margin-bottom:22px;
+    border:1px solid var(--line);
+    transition:background 0.3s ease, border-color 0.3s ease;
+  }
+  .status-card.libre{ background:var(--libre-bg); border-color:#bfe0cc; }
+  .status-card.ocupada{ background:var(--ocupada-bg); border-color:#edc4b8; }
+  .status-card.proxima{ background:var(--proxima-bg); border-color:#c4d0e6; }
+  .status-card.por-terminar{
+    background:#fff4d9;
+    border-color:#f0d28a;
+    animation: pulse-warning 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse-warning{
+    0%, 100%{ box-shadow: 0 0 0 0 rgba(184,134,11,0.18); }
+    50%{ box-shadow: 0 0 0 6px rgba(184,134,11,0.10); }
+  }
+  .status-card.por-terminar .dot{
+    background:#b8860b;
+    box-shadow:0 0 0 4px rgba(184,134,11,0.18);
+  }
+  .status-card.por-terminar .status-label{ color:#9a6c08; }
+  .warning-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:#fff;
+    border:1px solid #f0d28a;
+    color:#9a6c08;
+    font-size:0.78rem;
+    font-weight:600;
+    padding:5px 11px;
+    border-radius:999px;
+    margin-top:10px;
+  }
+
+  .status-top{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:6px;
+  }
+  .dot{
+    width:11px;height:11px;border-radius:50%;
+    flex-shrink:0;
+  }
+  .status-card.libre .dot{ background:var(--libre); box-shadow:0 0 0 4px rgba(47,122,79,0.15);}
+  .status-card.ocupada .dot{ background:var(--ocupada); box-shadow:0 0 0 4px rgba(179,64,44,0.15);}
+  .status-card.proxima .dot{ background:var(--proxima); box-shadow:0 0 0 4px rgba(58,90,140,0.15);}
+
+  .status-label{
+    font-weight:700;
+    font-size:1.05rem;
+  }
+  .status-card.libre .status-label{ color:var(--libre); }
+  .status-card.ocupada .status-label{ color:var(--ocupada); }
+  .status-card.proxima .status-label{ color:var(--proxima); }
+
+  .status-detail{
+    font-size:0.95rem;
+    color:var(--ink);
+    margin-top:8px;
+    line-height:1.5;
+  }
+  .status-detail b{ font-weight:700; }
+  .status-detail .muted{ color:var(--muted); }
+
+  .status-actions{
+    margin-top:16px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  button{
+    font-family:inherit;
+    font-size:0.88rem;
+    border-radius:9px;
+    padding:10px 16px;
+    border:1px solid transparent;
+    cursor:pointer;
+    font-weight:600;
+    transition:opacity 0.15s ease, transform 0.05s ease;
+  }
+  button:active{ transform: translateY(1px); }
+  button:disabled{ opacity:0.5; cursor:not-allowed; }
+
+  .btn-primary{
+    background:var(--ink);
+    color:var(--paper-2);
+  }
+  .btn-primary:hover{ opacity:0.88; }
+  .btn-secondary{
+    background:transparent;
+    color:var(--ink);
+    border:1px solid var(--ink);
+  }
+  .btn-secondary:hover{ background:rgba(0,0,0,0.04); }
+  .btn-danger{
+    background:transparent;
+    color:var(--ocupada);
+    border:1px solid var(--ocupada);
+  }
+  .btn-danger:hover{ background:rgba(179,64,44,0.06); }
+  .btn-small{
+    padding:6px 12px;
+    font-size:0.78rem;
+  }
+
+  /* FORM */
+  .form-card{
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:22px 24px;
+    margin-bottom:26px;
+  }
+  .form-card h2{
+    font-size:1rem;
+    margin:0 0 16px;
+    font-family:"Iowan Old Style","Georgia",serif;
+  }
+  .field{
+    margin-bottom:14px;
+  }
+  .field label{
+    display:block;
+    font-size:0.78rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--muted);
+    margin-bottom:5px;
+  }
+  .field label .opt{
+    text-transform:none;
+    letter-spacing:0;
+    font-style:italic;
+  }
+  .field input, .field select{
+    width:100%;
+    padding:10px 12px;
+    font-size:0.95rem;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:inherit;
+  }
+  .field input:focus, .field select:focus{
+    outline:2px solid var(--ink);
+    outline-offset:1px;
+  }
+  .row2{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+  .form-actions{
+    display:flex;
+    gap:10px;
+    margin-top:18px;
+  }
+  .error-msg{
+    color:var(--ocupada);
+    font-size:0.85rem;
+    margin-top:-4px;
+    margin-bottom:10px;
+    display:none;
+  }
+  .quick-dates{
+    display:flex;
+    gap:8px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+  }
+  .quick-date-btn{
+    background:var(--paper);
+    border:1px solid var(--line);
+    color:var(--ink);
+    font-size:0.78rem;
+    padding:7px 13px;
+    border-radius:999px;
+    font-weight:600;
+  }
+  .quick-date-btn.active{
+    background:var(--ink);
+    color:var(--paper-2);
+    border-color:var(--ink);
+  }
+  .quick-date-btn:hover{ opacity:0.85; }
+
+  /* UPCOMING */
+  .upcoming-section{
+    margin-bottom:26px;
+  }
+  .upcoming-section h2{
+    font-size:1rem;
+    font-family:"Iowan Old Style","Georgia",serif;
+    margin:0 0 12px;
+  }
+  .upcoming-card{
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:13px 16px;
+    margin-bottom:8px;
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+  }
+  .upcoming-card .info .who{ font-weight:600; font-size:0.93rem; }
+  .upcoming-card .info .area{ color:var(--muted); font-size:0.83rem; }
+  .upcoming-card .info .motivo{ color:var(--muted); font-size:0.8rem; font-style:italic; }
+  .upcoming-card .when{
+    text-align:right;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .upcoming-card .when .date-tag{
+    font-size:0.74rem;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--proxima);
+    font-weight:700;
+    display:block;
+    margin-bottom:2px;
+  }
+  .upcoming-card .when .time-range{
+    font-size:0.85rem;
+    color:var(--ink);
+    font-variant-numeric: tabular-nums;
+    display:block;
+    margin-bottom:6px;
+  }
+
+  /* HISTORY */
+  .history-section h2{
+    font-size:1rem;
+    font-family:"Iowan Old Style","Georgia",serif;
+    margin:0 0 4px;
+  }
+  .history-sub{
+    font-size:0.82rem;
+    color:var(--muted);
+    margin-bottom:14px;
+  }
+  .day-group{
+    margin-bottom:18px;
+  }
+  .day-title{
+    font-size:0.78rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--muted);
+    border-bottom:1px solid var(--line);
+    padding-bottom:6px;
+    margin-bottom:8px;
+  }
+  .entry{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    padding:10px 4px;
+    border-bottom:1px solid var(--line);
+    font-size:0.92rem;
+  }
+  .entry:last-child{ border-bottom:none; }
+  .entry .who{ font-weight:600; }
+  .entry .area{ color:var(--muted); font-size:0.85rem; }
+  .entry .motivo{ color:var(--muted); font-size:0.82rem; font-style:italic; margin-top:1px; }
+  .entry .time{
+    white-space:nowrap;
+    color:var(--ink);
+    font-variant-numeric: tabular-nums;
+    font-size:0.85rem;
+    text-align:right;
+  }
+  .entry .time .badge{
+    display:inline-block;
+    margin-left:6px;
+    font-size:0.7rem;
+    padding:2px 7px;
+    border-radius:999px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+  .badge.activa{ background:var(--ocupada-bg); color:var(--ocupada); }
+  .badge.finalizada{ background:#eee; color:var(--muted); }
+  .badge.cancelada{ background:#eee; color:var(--muted); }
+
+  .empty-state{
+    text-align:center;
+    color:var(--muted);
+    font-size:0.9rem;
+    padding:30px 10px;
+    border:1px dashed var(--line);
+    border-radius:var(--radius);
+  }
+
+  .sync-note{
+    text-align:center;
+    font-size:0.75rem;
+    color:var(--muted);
+    margin-top:22px;
+  }
+
+  .toast{
+    position:fixed;
+    bottom:22px;
+    left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--ink);
+    color:var(--paper-2);
+    padding:10px 18px;
+    border-radius:9px;
+    font-size:0.85rem;
+    opacity:0;
+    transition:opacity 0.25s ease, transform 0.25s ease;
+    pointer-events:none;
+    z-index:50;
+  }
+  .toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+
+  @media (max-width:480px){
+    .row2{ grid-template-columns:1fr; }
+    header{ flex-direction:column; align-items:flex-start; gap:4px; }
+    header .clock{ text-align:left; }
+    .upcoming-card{ flex-direction:column; }
+    .upcoming-card .when{ text-align:left; }
+  }
+
+  /* LOCK SCREEN */
+  #lockScreen{
+    position:fixed;
+    inset:0;
+    background:var(--paper);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:100;
+    padding:20px;
+  }
+  .lock-box{
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:32px 28px;
+    max-width:360px;
+    width:100%;
+    text-align:center;
+  }
+  .lock-box .lock-icon{
+    font-size:1.8rem;
+    margin-bottom:10px;
+  }
+  .lock-box h2{
+    font-family:"Iowan Old Style","Georgia",serif;
+    font-size:1.2rem;
+    margin:0 0 6px;
+  }
+  .lock-box p{
+    font-size:0.85rem;
+    color:var(--muted);
+    margin:0 0 18px;
+  }
+  .lock-box input{
+    width:100%;
+    padding:11px 14px;
+    font-size:0.95rem;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:inherit;
+    text-align:center;
+    margin-bottom:12px;
+  }
+  .lock-box input:focus{
+    outline:2px solid var(--ink);
+    outline-offset:1px;
+  }
+  .lock-error{
+    color:var(--ocupada);
+    font-size:0.82rem;
+    margin-bottom:10px;
+    display:none;
+  }
+  #appContent{ display:none; }
+</style>
+</head>
+<body>
+
+<div id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-icon">🔒</div>
+    <h2>Acceso restringido</h2>
+    <p>Ingresa la contraseña para ver y usar la bitácora de la sala de capacitación.</p>
+    <input id="lockPassword" type="password" placeholder="Contraseña" autocomplete="off">
+    <div class="lock-error" id="lockError">Contraseña incorrecta.</div>
+    <button class="btn-primary" id="btnUnlock" style="width:100%;">Entrar</button>
+  </div>
+</div>
+
+<div id="appContent">
+<div class="wrap">
+
+  <header>
+    <div>
+      <span class="eyebrow">Bitácora compartida</span>
+      <h1>Sala de Capacitación</h1>
+    </div>
+    <div class="clock" id="clock">—</div>
+  </header>
+
+  <div id="statusCard" class="status-card libre">
+    <div class="status-top">
+      <span class="dot"></span>
+      <span class="status-label" id="statusLabel">Cargando…</span>
+    </div>
+    <div class="status-detail" id="statusDetail"></div>
+    <div class="status-actions" id="statusActions"></div>
+  </div>
+
+  <div class="form-card" id="formCard" style="display:none;">
+    <h2 id="formTitle">Agendar la sala</h2>
+
+    <div class="quick-dates" id="quickDates"></div>
+
+    <div class="field">
+      <label for="inpFecha">Fecha</label>
+      <input id="inpFecha" type="date">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="inpDesde">Desde</label>
+        <input id="inpDesde" type="time">
+      </div>
+      <div class="field">
+        <label for="inpHasta">Hasta</label>
+        <input id="inpHasta" type="time">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="inpNombre">Nombre</label>
+        <input id="inpNombre" type="text" placeholder="Ej. María López" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="inpArea">Área</label>
+        <input id="inpArea" type="text" placeholder="Ej. Recursos Humanos" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="inpMotivo">Motivo de la reunión <span class="opt">(opcional)</span></label>
+      <input id="inpMotivo" type="text" placeholder="Ej. Capacitación de onboarding" autocomplete="off">
+    </div>
+
+    <div class="error-msg" id="formError"></div>
+    <div class="form-actions">
+      <button class="btn-primary" id="btnGuardar">Guardar reserva</button>
+      <button class="btn-secondary" id="btnCancelar">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="upcoming-section">
+    <h2>Próximas reservas</h2>
+    <div id="upcomingList"></div>
+  </div>
+
+  <div class="history-section">
+    <h2>Historial</h2>
+    <div class="history-sub">Registro de uso de la sala — últimos 14 días</div>
+    <div id="historyList"></div>
+  </div>
+
+  <div class="sync-note">Esta bitácora se actualiza para todas las personas que la abran.</div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SHARED = true;
+const BOOKINGS_KEY = "sala-capacitacion:reservas";
+
+// Hash SHA-256 de la contraseña de acceso (no se guarda en texto plano)
+const PASSWORD_HASH = "db3704792a00a9e85dcaf5b801330c63a066c28fdb5214428b49a45a6f320a4c";
+
+async function sha256(text){
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+const lockScreen = document.getElementById('lockScreen');
+const appContent = document.getElementById('appContent');
+const lockPassword = document.getElementById('lockPassword');
+const lockError = document.getElementById('lockError');
+const btnUnlock = document.getElementById('btnUnlock');
+
+async function tryUnlock(){
+  const value = lockPassword.value;
+  if(!value){ return; }
+  btnUnlock.disabled = true;
+  try{
+    const hash = await sha256(value);
+    if(hash === PASSWORD_HASH){
+      lockScreen.style.display = 'none';
+      appContent.style.display = 'block';
+      lockError.style.display = 'none';
+      init();
+    } else {
+      lockError.style.display = 'block';
+      lockPassword.value = '';
+      lockPassword.focus();
+    }
+  } finally {
+    btnUnlock.disabled = false;
+  }
+}
+
+btnUnlock.addEventListener('click', tryUnlock);
+lockPassword.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') tryUnlock();
+});
+lockPassword.focus();
+
+const statusCard = document.getElementById('statusCard');
+const statusLabel = document.getElementById('statusLabel');
+const statusDetail = document.getElementById('statusDetail');
+const statusActions = document.getElementById('statusActions');
+const formCard = document.getElementById('formCard');
+const formTitle = document.getElementById('formTitle');
+const quickDates = document.getElementById('quickDates');
+const inpFecha = document.getElementById('inpFecha');
+const inpDesde = document.getElementById('inpDesde');
+const inpHasta = document.getElementById('inpHasta');
+const inpNombre = document.getElementById('inpNombre');
+const inpArea = document.getElementById('inpArea');
+const inpMotivo = document.getElementById('inpMotivo');
+const formError = document.getElementById('formError');
+const btnGuardar = document.getElementById('btnGuardar');
+const btnCancelar = document.getElementById('btnCancelar');
+const upcomingList = document.getElementById('upcomingList');
+const historyList = document.getElementById('historyList');
+const clockEl = document.getElementById('clock');
+const toastEl = document.getElementById('toast');
+
+// bookings: [{ id, nombre, area, motivo, fecha (YYYY-MM-DD), desde (HH:MM), hasta (HH:MM), estado: 'programada'|'finalizada'|'cancelada' }]
+let bookings = [];
+let pollTimer = null;
+let initialized = false;
+
+function showToast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(()=> toastEl.classList.remove('show'), 2200);
+}
+
+function pad(n){ return n.toString().padStart(2,'0'); }
+
+function updateClock(){
+  const now = new Date();
+  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  clockEl.textContent = `${dias[now.getDay()]} ${now.getDate()} ${meses[now.getMonth()]} · ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+function fmtTime(hhmm){
+  if(!hhmm) return '';
+  const [h,m] = hhmm.split(':');
+  let hh = parseInt(h,10);
+  const ampm = hh >= 12 ? 'p.m.' : 'a.m.';
+  let hh12 = hh % 12; if(hh12===0) hh12 = 12;
+  return `${hh12}:${m} ${ampm}`;
+}
+
+function dateObj(d){ return new Date(d + 'T00:00:00'); }
+
+function todayStr(){
+  const now = new Date();
+  return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+}
+
+function nowHHMM(){
+  const now = new Date();
+  return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
+function addDays(dateStr, n){
+  const d = dateObj(dateStr);
+  d.setDate(d.getDate()+n);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function minutosRestantes(fecha, hasta){
+  const now = new Date();
+  const [h,m] = hasta.split(':').map(Number);
+  const [yy,mm,dd] = fecha.split('-').map(Number);
+  const target = new Date(yy, mm-1, dd, h, m, 0);
+  const diffMs = target - now;
+  return Math.round(diffMs / 60000);
+}
+
+function dayLabel(dateStr){
+  const today = todayStr();
+  const tomorrow = addDays(today, 1);
+  const yest = addDays(today, -1);
+  if(dateStr === today) return 'Hoy';
+  if(dateStr === tomorrow) return 'Mañana';
+  if(dateStr === yest) return 'Ayer';
+  const d = dateObj(dateStr);
+  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function genId(){
+  return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+}
+
+async function loadBookings(){
+  try{
+    const res = await window.storage.get(BOOKINGS_KEY, SHARED);
+    bookings = res ? JSON.parse(res.value) : [];
+  }catch(e){
+    bookings = [];
+  }
+}
+
+async function saveBookings(){
+  await window.storage.set(BOOKINGS_KEY, JSON.stringify(bookings), SHARED);
+}
+
+// Una reserva "activa ahora": fecha = hoy, desde <= ahora < hasta, estado programada
+function getActivaAhora(){
+  const today = todayStr();
+  const now = nowHHMM();
+  return bookings.find(b =>
+    b.estado === 'programada' &&
+    b.fecha === today &&
+    b.desde <= now && now < b.hasta
+  ) || null;
+}
+
+// Próxima reserva de HOY que aún no ha empezado
+function getProximaHoy(){
+  const today = todayStr();
+  const now = nowHHMM();
+  const candidatas = bookings.filter(b =>
+    b.estado === 'programada' &&
+    b.fecha === today &&
+    b.desde > now
+  ).sort((a,b)=> a.desde.localeCompare(b.desde));
+  return candidatas[0] || null;
+}
+
+// Todas las reservas futuras (incluye la de hoy en curso) para la lista "Próximas"
+function getProximas(){
+  const today = todayStr();
+  const now = nowHHMM();
+  return bookings.filter(b => {
+    if(b.estado !== 'programada') return false;
+    if(b.fecha > today) return true;
+    if(b.fecha === today && b.hasta > now) return true;
+    return false;
+  }).sort((a,b)=> (a.fecha+a.desde).localeCompare(b.fecha+b.desde));
+}
+
+async function archivarVencidas(){
+  const today = todayStr();
+  const now = nowHHMM();
+  let changed = false;
+  bookings.forEach(b => {
+    if(b.estado === 'programada'){
+      const vencida = b.fecha < today || (b.fecha === today && b.hasta <= now);
+      if(vencida){
+        b.estado = 'finalizada';
+        changed = true;
+      }
+    }
+  });
+  if(changed) await saveBookings();
+}
+
+function renderStatus(){
+  const activa = getActivaAhora();
+
+  if(activa){
+    const restantes = minutosRestantes(activa.fecha, activa.hasta);
+    const porTerminar = restantes <= 5 && restantes > 0;
+
+    statusCard.className = porTerminar ? 'status-card por-terminar' : 'status-card ocupada';
+    statusLabel.textContent = 'Ocupada';
+
+    const motivoLine = activa.motivo
+      ? `<br><span class="muted">Motivo:</span> ${escapeHtml(activa.motivo)}`
+      : '';
+
+    statusDetail.innerHTML = `<b>${escapeHtml(activa.nombre)}</b> · <span class="muted">${escapeHtml(activa.area)}</span><br>Hasta las <b>${fmtTime(activa.hasta)}</b>${motivoLine}`;
+
+    if(porTerminar){
+      statusDetail.innerHTML += `<div class="warning-pill">⏱ Quedan ${restantes} ${restantes === 1 ? 'minuto' : 'minutos'}</div>`;
+    }
+
+    statusActions.innerHTML = '';
+    const btnLiberar = document.createElement('button');
+    btnLiberar.className = 'btn-danger';
+    btnLiberar.textContent = 'Liberar sala ahora';
+    btnLiberar.onclick = () => liberarAhora(activa.id);
+    statusActions.appendChild(btnLiberar);
+
+    const btnAgendar = document.createElement('button');
+    btnAgendar.className = 'btn-secondary';
+    btnAgendar.textContent = 'Agendar otro horario';
+    btnAgendar.onclick = () => openForm();
+    statusActions.appendChild(btnAgendar);
+    return;
+  }
+
+  const proximaHoy = getProximaHoy();
+  if(proximaHoy){
+    statusCard.className = 'status-card proxima';
+    statusLabel.textContent = 'Disponible ahora';
+
+    const motivoLine = proximaHoy.motivo
+      ? ` · <span class="muted">${escapeHtml(proximaHoy.motivo)}</span>`
+      : '';
+
+    statusDetail.innerHTML = `Libre por ahora. Próxima reserva hoy:<br><b>${escapeHtml(proximaHoy.nombre)}</b> · <span class="muted">${escapeHtml(proximaHoy.area)}</span>${motivoLine}<br>De <b>${fmtTime(proximaHoy.desde)}</b> a <b>${fmtTime(proximaHoy.hasta)}</b>`;
+
+    statusActions.innerHTML = '';
+    const btnOcupar = document.createElement('button');
+    btnOcupar.className = 'btn-primary';
+    btnOcupar.textContent = 'Agendar la sala';
+    btnOcupar.onclick = () => openForm();
+    statusActions.appendChild(btnOcupar);
+    return;
+  }
+
+  statusCard.className = 'status-card libre';
+  statusLabel.textContent = 'Disponible';
+  statusDetail.textContent = 'Nadie está usando la sala en este momento ni hay reservas para hoy.';
+  statusActions.innerHTML = '';
+  const btnOcupar = document.createElement('button');
+  btnOcupar.className = 'btn-primary';
+  btnOcupar.textContent = 'Agendar la sala';
+  btnOcupar.onclick = () => openForm();
+  statusActions.appendChild(btnOcupar);
+}
+
+function setQuickDate(dateStr){
+  inpFecha.value = dateStr;
+  Array.from(quickDates.children).forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.date === dateStr);
+  });
+}
+
+function buildQuickDates(){
+  const today = todayStr();
+  const opciones = [
+    { label: 'Hoy', date: today },
+    { label: 'Mañana', date: addDays(today,1) },
+    { label: addDays(today,2).split('-').slice(1).reverse().join('/'), date: addDays(today,2) }
+  ];
+  quickDates.innerHTML = '';
+  opciones.forEach(op => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'quick-date-btn';
+    b.textContent = op.label;
+    b.dataset.date = op.date;
+    b.onclick = () => setQuickDate(op.date);
+    quickDates.appendChild(b);
+  });
+}
+
+function openForm(){
+  formCard.style.display = 'block';
+  formTitle.textContent = 'Agendar la sala';
+  buildQuickDates();
+  const today = todayStr();
+  setQuickDate(today);
+  inpFecha.min = today;
+  inpDesde.value = '';
+  inpHasta.value = '';
+  inpNombre.value = '';
+  inpArea.value = '';
+  inpMotivo.value = '';
+  formError.style.display = 'none';
+  formCard.scrollIntoView({behavior:'smooth', block:'center'});
+  inpNombre.focus();
+}
+
+function closeForm(){
+  formCard.style.display = 'none';
+}
+
+inpFecha.addEventListener('change', () => {
+  Array.from(quickDates.children).forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.date === inpFecha.value);
+  });
+});
+
+async function liberarAhora(id){
+  const b = bookings.find(x => x.id === id);
+  if(!b) return;
+  b.hasta = nowHHMM();
+  b.estado = 'finalizada';
+  await saveBookings();
+  renderAll();
+  showToast('Sala liberada');
+}
+
+async function cancelarReserva(id){
+  const b = bookings.find(x => x.id === id);
+  if(!b) return;
+  b.estado = 'cancelada';
+  await saveBookings();
+  renderAll();
+  showToast('Reserva cancelada');
+}
+
+btnGuardar.addEventListener('click', async () => {
+  const fecha = inpFecha.value;
+  const desde = inpDesde.value;
+  const hasta = inpHasta.value;
+  const nombre = inpNombre.value.trim();
+  const area = inpArea.value.trim();
+  const motivo = inpMotivo.value.trim();
+
+  if(!fecha || !desde || !hasta || !nombre || !area){
+    formError.textContent = 'Completa fecha, horario, nombre y área.';
+    formError.style.display = 'block';
+    return;
+  }
+  if(hasta <= desde){
+    formError.textContent = 'La hora "hasta" debe ser posterior a la hora "desde".';
+    formError.style.display = 'block';
+    return;
+  }
+  const today = todayStr();
+  if(fecha === today && hasta <= nowHHMM()){
+    formError.textContent = 'Ese horario ya pasó. Elige una hora posterior a la actual.';
+    formError.style.display = 'block';
+    return;
+  }
+  if(fecha < today){
+    formError.textContent = 'No puedes agendar una fecha pasada.';
+    formError.style.display = 'block';
+    return;
+  }
+
+  const newBooking = {
+    id: genId(),
+    nombre, area, motivo,
+    fecha, desde, hasta,
+    estado: 'programada'
+  };
+
+  try{
+    btnGuardar.disabled = true;
+    bookings.push(newBooking);
+    await saveBookings();
+    closeForm();
+    renderAll();
+    showToast('Reserva guardada');
+  }catch(e){
+    bookings.pop();
+    formError.textContent = 'No se pudo guardar. Intenta de nuevo.';
+    formError.style.display = 'block';
+  }finally{
+    btnGuardar.disabled = false;
+  }
+});
+
+btnCancelar.addEventListener('click', closeForm);
+
+function renderUpcoming(){
+  const activa = getActivaAhora();
+  let proximas = getProximas();
+  // no repetir la que ya se muestra como "activa ahora" en la tarjeta principal
+  if(activa) proximas = proximas.filter(b => b.id !== activa.id);
+
+  if(!proximas.length){
+    upcomingList.innerHTML = '<div class="empty-state">No hay próximas reservas agendadas.</div>';
+    return;
+  }
+
+  let html = '';
+  proximas.forEach(b => {
+    const motivoLine = b.motivo ? `<div class="motivo">${escapeHtml(b.motivo)}</div>` : '';
+    html += `
+      <div class="upcoming-card">
+        <div class="info">
+          <div class="who">${escapeHtml(b.nombre)}</div>
+          <div class="area">${escapeHtml(b.area)}</div>
+          ${motivoLine}
+        </div>
+        <div class="when">
+          <span class="date-tag">${dayLabel(b.fecha)}</span>
+          <span class="time-range">${fmtTime(b.desde)} – ${fmtTime(b.hasta)}</span>
+          <button class="btn-danger btn-small" data-cancel-id="${b.id}">Cancelar</button>
+        </div>
+      </div>`;
+  });
+  upcomingList.innerHTML = html;
+
+  upcomingList.querySelectorAll('[data-cancel-id]').forEach(btn => {
+    btn.addEventListener('click', () => cancelarReserva(btn.dataset.cancelId));
+  });
+}
+
+function renderHistory(){
+  const today = todayStr();
+  const cutoff = addDays(today, -14);
+  const pasadas = bookings.filter(b =>
+    (b.estado === 'finalizada' || b.estado === 'cancelada') && b.fecha >= cutoff
+  );
+
+  if(!pasadas.length){
+    historyList.innerHTML = '<div class="empty-state">Aún no hay registros en la bitácora.</div>';
+    return;
+  }
+
+  const groups = {};
+  pasadas.forEach(h => {
+    if(!groups[h.fecha]) groups[h.fecha] = [];
+    groups[h.fecha].push(h);
+  });
+  const sortedDates = Object.keys(groups).sort().reverse();
+  let html = '';
+  sortedDates.forEach(date => {
+    const entries = groups[date].sort((a,b)=> a.desde.localeCompare(b.desde));
+    html += `<div class="day-group"><div class="day-title">${dayLabel(date)}</div>`;
+    entries.forEach(h => {
+      const badge = h.estado === 'cancelada'
+        ? '<span class="badge cancelada">cancelada</span>'
+        : '<span class="badge finalizada">finalizada</span>';
+      html += `
+        <div class="entry">
+          <div>
+            <div class="who">${escapeHtml(h.nombre)}</div>
+            <div class="area">${escapeHtml(h.area)}</div>
+            ${h.motivo ? `<div class="motivo">${escapeHtml(h.motivo)}</div>` : ''}
+          </div>
+          <div class="time">${fmtTime(h.desde)} – ${fmtTime(h.hasta)}${badge}</div>
+        </div>`;
+    });
+    html += `</div>`;
+  });
+  historyList.innerHTML = html;
+}
+
+function renderAll(){
+  renderStatus();
+  renderUpcoming();
+  renderHistory();
+}
+
+async function refreshAll(){
+  await archivarVencidas();
+  await loadBookings();
+  renderAll();
+}
+
+async function init(){
+  if(initialized) return;
+  initialized = true;
+  updateClock();
+  setInterval(updateClock, 30000);
+  await loadBookings();
+  await archivarVencidas();
+  renderAll();
+  pollTimer = setInterval(refreshAll, 10000);
+}
+</script>
+</body>
+</html>
