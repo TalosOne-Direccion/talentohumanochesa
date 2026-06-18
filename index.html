@@ -557,6 +557,19 @@
 const SHARED = true;
 const BOOKINGS_KEY = "sala-capacitacion:reservas";
 
+// Fallback for window.storage if it does not exist (e.g. running locally or on static hosting)
+if (!window.storage) {
+  window.storage = {
+    get: async function(key, shared) {
+      const val = localStorage.getItem(key);
+      return val ? { value: val } : null;
+    },
+    set: async function(key, value, shared) {
+      localStorage.setItem(key, value);
+    }
+  };
+}
+
 // Hash SHA-256 de la contraseña de acceso (no se guarda en texto plano)
 const PASSWORD_HASH = "db3704792a00a9e85dcaf5b801330c63a066c28fdb5214428b49a45a6f320a4c";
 
