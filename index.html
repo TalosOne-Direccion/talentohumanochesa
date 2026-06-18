@@ -575,6 +575,12 @@
     font-size: 0.88rem;
     line-height: 1.4;
   }
+  .header-logo {
+    height: 48px;
+    width: auto;
+    object-fit: contain;
+    border-radius: 6px;
+  }
 </style>
 </head>
 <body>
@@ -603,9 +609,12 @@
 <div class="wrap">
 
   <header style="align-items: center;">
-    <div>
-      <span class="eyebrow">Bitácora compartida <span id="dbStatusBadge" class="db-status-badge local">Modo Local</span></span>
-      <h1>Sala de Capacitación</h1>
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <img src="logochesa.jpeg" alt="Logo CHESA" class="header-logo">
+      <div>
+        <span class="eyebrow" style="margin-bottom: 2px; display: block;">Bitácora compartida <span id="dbStatusBadge" class="db-status-badge local">Modo Local</span></span>
+        <h1 style="margin: 0; line-height: 1.1;">Sala de Capacitación</h1>
+      </div>
     </div>
     <div class="header-right">
       <div class="clock" id="clock">—</div>
