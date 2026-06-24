@@ -1352,6 +1352,38 @@ btnGuardar.addEventListener('click', async () => {
 
   try{
     btnGuardar.disabled = true;
+
+    if (useFirebase && db) {
+      const snapshot = await db.collection("reservas")
+        .where("fecha", "==", fecha)
+        .where("estado", "==", "programada")
+        .get();
+      const activeBookings = [];
+      snapshot.forEach(doc => {
+        activeBookings.push({ id: doc.id, ...doc.data() });
+      });
+      const conflicto = activeBookings.find(b => {
+        return (desde < b.hasta && b.desde < hasta);
+      });
+      if (conflicto) {
+        formError.innerHTML = `El horario seleccionado se traslapa con la reserva de <b>${escapeHtml(conflicto.nombre)}</b> (${escapeHtml(conflicto.area)}) de <b>${fmtTime(conflicto.desde)}</b> a <b>${fmtTime(conflicto.hasta)}</b>.`;
+        formError.style.display = 'block';
+        return;
+      }
+    } else {
+      const latest = await getLatestBookingsFromStorage();
+      const conflicto = latest.find(b => {
+        return b.estado === 'programada' &&
+               b.fecha === fecha &&
+               (desde < b.hasta && b.desde < hasta);
+      });
+      if (conflicto) {
+        formError.innerHTML = `El horario seleccionado se traslapa con la reserva de <b>${escapeHtml(conflicto.nombre)}</b> (${escapeHtml(conflicto.area)}) de <b>${fmtTime(conflicto.desde)}</b> a <b>${fmtTime(conflicto.hasta)}</b>.`;
+        formError.style.display = 'block';
+        return;
+      }
+    }
+
     await addOrUpdateBooking(newBooking);
     closeForm();
     renderAll();
