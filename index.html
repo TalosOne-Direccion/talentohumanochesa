@@ -304,15 +304,60 @@
   }
 
   /* HISTORY */
-  .history-section h2{
-    font-size:1rem;
-    font-family:"Iowan Old Style","Georgia",serif;
-    margin:0 0 4px;
+  .history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    padding: 6px 0;
+    margin-bottom: 4px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
   }
-  .history-sub{
-    font-size:0.82rem;
-    color:var(--muted);
-    margin-bottom:14px;
+  .history-header:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+  .history-header h2 {
+    font-size: 1rem;
+    font-family: "Iowan Old Style","Georgia",serif;
+    margin: 0;
+  }
+  .history-sub {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .history-header .history-sub {
+    margin-bottom: 0;
+  }
+  .history-toggle-icon {
+    font-size: 0.85rem;
+    color: var(--muted);
+    transition: transform 0.3s ease, color 0.2s ease;
+    transform: rotate(0deg);
+    padding: 4px 8px;
+  }
+  .history-header:hover .history-toggle-icon {
+    color: var(--ink);
+  }
+  .history-section.collapsed .history-toggle-icon {
+    transform: rotate(-90deg);
+  }
+  .history-content {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.3s ease, opacity 0.2s ease;
+    opacity: 1;
+  }
+  .history-content.collapsed {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .history-content > div {
+    overflow: hidden;
+    min-height: 0;
   }
   .day-group{
     margin-bottom:18px;
@@ -687,24 +732,33 @@
     <div id="upcomingList"></div>
   </div>
 
-  <div class="history-section">
-    <h2>Historial</h2>
-    <div class="history-sub">Registro de uso de la sala</div>
+  <div class="history-section" id="historySection">
+    <div class="history-header" id="historyHeader">
+      <div>
+        <h2>Historial</h2>
+        <div class="history-sub">Registro de uso de la sala</div>
+      </div>
+      <span class="history-toggle-icon" id="historyToggleIcon">▼</span>
+    </div>
     
-    <!-- Filtros de Historial -->
-    <div class="history-filters">
-      <input type="text" id="historySearch" placeholder="Buscar por nombre, área o motivo..." autocomplete="off">
-      <div class="filters-row">
-        <select id="historyStatusFilter">
-          <option value="todos">Todos los estados</option>
-          <option value="finalizada">Finalizadas</option>
-          <option value="cancelada">Canceladas</option>
-        </select>
-        <button class="quick-date-btn active" id="btnToggleTimeframe" type="button">Últimos 14 días</button>
+    <div class="history-content" id="historyContent">
+      <div>
+        <!-- Filtros de Historial -->
+        <div class="history-filters">
+          <input type="text" id="historySearch" placeholder="Buscar por nombre, área o motivo..." autocomplete="off">
+          <div class="filters-row">
+            <select id="historyStatusFilter">
+              <option value="todos">Todos los estados</option>
+              <option value="finalizada">Finalizadas</option>
+              <option value="cancelada">Canceladas</option>
+            </select>
+            <button class="quick-date-btn active" id="btnToggleTimeframe" type="button">Últimos 14 días</button>
+          </div>
+        </div>
+
+        <div id="historyList"></div>
       </div>
     </div>
-
-    <div id="historyList"></div>
   </div>
 
   <div class="sync-note">Esta bitácora se actualiza para todas las personas que la abran.</div>
@@ -1521,6 +1575,32 @@ async function init(){
   updateClock();
   setInterval(updateClock, 30000);
   updateUserUI();
+
+  // Collapsible History Setup
+  const historyHeader = document.getElementById('historyHeader');
+  const historySection = document.getElementById('historySection');
+  const historyContent = document.getElementById('historyContent');
+  
+  if (historyHeader && historySection && historyContent) {
+    const isHistoryCollapsed = localStorage.getItem('bitacora:historyCollapsed') === 'true';
+    if (isHistoryCollapsed) {
+      historySection.classList.add('collapsed');
+      historyContent.classList.add('collapsed');
+    }
+    
+    historyHeader.addEventListener('click', () => {
+      const willCollapse = !historyContent.classList.contains('collapsed');
+      if (willCollapse) {
+        historySection.classList.add('collapsed');
+        historyContent.classList.add('collapsed');
+        localStorage.setItem('bitacora:historyCollapsed', 'true');
+      } else {
+        historySection.classList.remove('collapsed');
+        historyContent.classList.remove('collapsed');
+        localStorage.setItem('bitacora:historyCollapsed', 'false');
+      }
+    });
+  }
 
   // Initialize filter event listeners
   const searchInput = document.getElementById('historySearch');
