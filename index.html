@@ -1064,8 +1064,32 @@ async function initFirestore() {
     bookings = list;
     archivarVencidasLocales();
     renderAll();
-  }, (error) => {
+  }, async (error) => {
     console.error("Error al suscribirse a Firestore:", error);
+    showToast("Error de conexión con la nube. Cambiando a Modo Local.");
+    
+    // Desactivar Firebase para usar el fallback local
+    useFirebase = false;
+    
+    if (statusBadge) {
+      statusBadge.textContent = "Modo Local (Error Nube)";
+      statusBadge.className = "db-status-badge local";
+    }
+    if (warningBanner) {
+      const errTxt = (error.message || error).toString().replace(/\.$/, '');
+      warningBanner.innerHTML = `⚠️ <b>Error de sincronización con la nube:</b> ${escapeHtml(errTxt)}. La bitácora ha cambiado a <b>Modo Local</b>. Los cambios se guardarán localmente en este dispositivo.`;
+      warningBanner.style.display = "block";
+    }
+    
+    // Cargar bookings locales y renderizar
+    await loadBookings();
+    await archivarVencidasLocales();
+    renderAll();
+    
+    // Iniciar el polling local para mantener actualizado el estado
+    if (!pollTimer) {
+      pollTimer = setInterval(refreshAll, 10000);
+    }
   });
 }
 
